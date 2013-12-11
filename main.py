@@ -1,16 +1,17 @@
 #!/usr/bin/python
 
 import urllib2
-import sys
+import sys, re
 from bs4 import BeautifulSoup
 from urlparse import urljoin
 
 spotifile = "spotifile.txt"
 
-baseUrl = "http://ws.spotify.com/lookup/1/?uri="
+
 #trackID = "spotify:track:5aZCwTIsfqv22p5bewcrgf"
 
 def trackLookup(trackID):
+	baseUrl = "http://ws.spotify.com/lookup/1/?uri="
 	try:
 		url = baseUrl + trackID
 		openpage = urllib2.urlopen(url)
@@ -18,15 +19,19 @@ def trackLookup(trackID):
 		return soup;
 	except: 
 		print "Could not open page"	
-		return 1;
+		return -1;
 	
 
 def parseXML(soup):
-	trackDetails = []
-	trackDetails.append(soup.track.artist.nameTag.string)
-	trackDetails.append(soup.track.nameTag.string)
-	trackDetails.append(soup.track.album.nameTag.string)
-	return trackDetails; 
+	try:
+		trackDetails = []
+		trackDetails.append(soup.track.artist.nameTag.string)
+		trackDetails.append(soup.track.nameTag.string)
+		trackDetails.append(soup.track.album.nameTag.string)
+		return trackDetails; 
+	except:
+		print "Error parsing file"
+		return -1;
 
 def readList(spotifile):
 	return [line.strip() for line in open(spotifile)];
@@ -42,6 +47,22 @@ def YTSearch(trackDetails):
 	resultPage = urllib2.urlopen(searchResult)
 	print searchResult
 
+
+def pirateSearch(trackDetails):
+	searchString = trackDetails[0] + "%20" + trackDetails[2]
+	searchString = searchString.replace(" ", "%20")
+	### PROXY URL -> LIKELY TO CHANGE ###	
+	baseLink = "http://www.proxybay.eu/search/" + searchString + "/0/7/0"
+	### 0/7/0 indicates highest seed first
+	print baseLink
+	searchResult = urllib2.urlopen(baseLink).read()
+	result = re.findall(r'<div class="detName">.*?<\/tr>', searchResult, re.DOTALL)
+	#print result
+	print len(result)	
+	#print baseLink
+	
+	
+
 #print trackLookup(trackID)
 trackList = readList(spotifile)
 print "Number of tracks: " + str(len(trackList))
@@ -50,4 +71,4 @@ for track in trackList:
 	#trackLookup(track)
 	trackDetails = parseXML(trackLookup(track))
 	printTrack(trackDetails)
-	#YTSearch(trackDetails)
+	pirateSearch(trackDetails)
