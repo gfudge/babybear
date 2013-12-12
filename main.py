@@ -1,7 +1,8 @@
 #!/usr/bin/python
 
 import urllib2
-import sys, re
+import transmissionrpc
+import sys, re, subprocess, time
 from bs4 import BeautifulSoup
 from urlparse import urljoin
 
@@ -54,16 +55,50 @@ def pirateSearch(trackDetails):
 	### PROXY URL -> LIKELY TO CHANGE ###	
 	baseLink = "http://www.proxybay.eu/search/" + searchString + "/0/7/0"
 	### 0/7/0 indicates highest seed first
-	print baseLink
-	searchResult = urllib2.urlopen(baseLink).read()
-	result = re.findall(r'<div class="detName">.*?<\/tr>', searchResult, re.DOTALL)
+	print "Trying: " + baseLink
+	try:
+		searchResult = urllib2.urlopen(baseLink).read()
+	except urllib2.HTTPError, err:
+		if err.code == 522:
+			print "Connection timeout, waiting 10 seconds..."
+			time.sleep(10)
+			
+		else:	
+			print "Could not open TBP page"
+			raise
+	try:	
+		results = re.findall(r'<div class="detName">.*?<\/tr>', searchResult, re.DOTALL)
+	except:
+		print "RegEx on page results failed"
+		raise
+
 	#print result
-	print len(result)	
-	#print baseLink
+	if (len(results) == 0):
+		print "No links found for " + trackDetails[0]
+	print "Got " + str(len(results)) + " results\n"
+	for result in results:
+		success = False
+		if (success == True): return
+		resultLink = re.search(r'<a href=\".*>(.*?)</a>.*<a href=\"magnet:(.*?)\".*\"detDesc\">(.*?),(.*?),(.*?)<.*<td align=\"right\">([0-9]+)<.*<td align=\"right\">([0-9]+)', result, re.DOTALL)
+		magnetLink = "magnet:" + resultLink.group(2)
+		#print magnetLink
+		### Try to add magnet link to transmission-daemon
+		try:
+			tc.add_torrent(magnetLink)
+			success = True
+			return
+		except transmissionrpc.TransmissionError, err:
+			print err
+		else:
+			print "Failed to add magnet"
+			raise
+		#subprocess.call(["transmission-remote", "-a", magnetLink])
+
 	
 	
 
 #print trackLookup(trackID)
+tc = transmissionrpc.Client('localhost', port=9091)
 trackList = readList(spotifile)
 print "Number of tracks: " + str(len(trackList))
 
