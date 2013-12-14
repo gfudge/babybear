@@ -71,29 +71,34 @@ def pirateSearch(trackDetails):
 	except:
 		print "RegEx on page results failed"
 		raise
-
+	success = False
 	#print result
 	if (len(results) == 0):
 		print "No links found for " + trackDetails[0]
-	print "Got " + str(len(results)) + " results\n"
-	for result in results:
-		success = False
-		if (success == True): return
-		resultLink = re.search(r'<a href=\".*>(.*?)</a>.*<a href=\"magnet:(.*?)\".*\"detDesc\">(.*?),(.*?),(.*?)<.*<td align=\"right\">([0-9]+)<.*<td align=\"right\">([0-9]+)', result, re.DOTALL)
-		magnetLink = "magnet:" + resultLink.group(2)
-		#print magnetLink
-		### Try to add magnet link to transmission-daemon
-		try:
-			tc.add_torrent(magnetLink)
-			success = True
-			return
-		except transmissionrpc.TransmissionError, err:
-			print err
-		else:
-			print "Failed to add magnet"
-			raise
-		#subprocess.call(["transmission-remote", "-a", magnetLink])
-
+	else:
+		print "Got " + str(len(results)) + " results\n"
+		### WHILE? ###
+		while (success == False):
+			for result in results:
+				#if (success == True): return
+				resultLink = re.search(r'<a href=\".*>(.*?)</a>.*<a href=\"magnet:(.*?)\".*\"detDesc\">(.*?),(.*?),(.*?)<.*<td align=\"right\">([0-9]+)<.*<td align=\"right\">([0-9]+)', result, re.DOTALL)
+				magnetLink = "magnet:" + resultLink.group(2)
+				#print magnetLink
+				### Try to add magnet link to transmission-daemon
+				try:
+					tc.add_torrent(magnetLink)
+					success = True
+					return
+				except transmissionrpc.TransmissionError, err:
+					print err
+					success = True
+					#raise
+				else:
+					print "Failed to add magnet"
+					success = True
+					raise
+				#subprocess.call(["transmission-remote", "-a", magnetLink])
+		return;
 	
 	
 
@@ -107,3 +112,5 @@ for track in trackList:
 	trackDetails = parseXML(trackLookup(track))
 	printTrack(trackDetails)
 	pirateSearch(trackDetails)
+
+
